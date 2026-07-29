@@ -562,7 +562,7 @@
         setProgress(5, 'Downloading game files...');
 
         const files = {};
-        const res = await fetch('./valve.zip');
+        const res = await fetch('https://media.githubusercontent.com/media/athyx-network/csweb/main/valve.zip');
         const zip = await JSZip.loadAsync(await res.arrayBuffer());
 
         setProgress(20, 'Extracting assets...');
