@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Counter-Strike</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekmas/cs16.css@main/css/cs16.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            position: fixed;
+        }
+
+        body {
+            background: var(--bg);
+            overflow: hidden;
+            font-family: ArialPixel, system-ui, sans-serif;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            color: var(--accent);
+        }
+
+        #loading-overlay h1 {
+            font-size: 48px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #loading-overlay .subtitle {
+            font-size: 18px;
+            color: var(--text-3);
+            margin-bottom: 30px;
+        }
+
+        #loading-status {
+            font-size: 14px;
+            color: var(--text-3);
+            margin-top: 10px;
+        }
+
+        #main-menu {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: url('custom_assets/background.webp') center/cover no-repeat;
+            display: none;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding-left: 40px;
+            padding-bottom: 80px;
+            z-index: 9999;
+            color: var(--accent);
+        }
+
+        #main-menu::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        #main-menu h1 {
+            font-size: 52px;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 8px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.9);
+        }
+
+        #main-menu .version {
+            font-size: 14px;
+            color: var(--text-3);
+            margin-bottom: 50px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 300px;
+            z-index: 1;
+        }
+
+        .menu-logo {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            max-width: 200px;
+            height: auto;
+            image-rendering: pixelated;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #FFF;
+            padding: 6px 0;
+            font-family: ArialPixel, system-ui, sans-serif;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+            line-height: 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .menu-btn:hover {
+            color: #CCC;
+        }
+
+        .menu-btn:active {
+            color: #999;
+        }
+
+        .menu-btn.danger {
+            border: none;
+            color: #FFF;
+        }
+
+        .menu-btn.danger:hover {
+            color: #CCC;
+        }
+
+        .cs-window {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--bg);
+            border: 1px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            padding: 4px;
+            min-width: 350px;
+            max-width: 510px;
+            user-select: none;
+            z-index: 10;
+            display: none;
+        }
+
+        .cs-window .heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 4px;
+            margin-bottom: 4px;
+        }
+
+        .cs-window .heading .title {
+            color: #fff;
+            font-size: 16px;
+            line-height: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .cs-window .content {
+            padding: 10px;
+        }
+
+        .cs-window .footer-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .cs-window .close-btn {
+            background: none;
+            border: 1px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            color: var(--text-3);
+            width: 18px;
+            height: 18px;
+            font-family: ArialPixel, system-ui, sans-serif;
+            font-size: 12px;
+            line-height: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .cs-window .close-btn:active {
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+        }
+
+        .cs-window #map-select-dropdown {
+            width: 100%;
+        }
+
+        #settings-panel .content {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .setting-group {
+            width: 100%;
+            margin-bottom: 18px;
+        }
+
+        .setting-group input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--slider-bg);
+            border: 1px solid;
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .setting-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 8px;
+            height: 16px;
+            background: var(--bg);
+            border: 1px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            cursor: pointer;
+        }
+
+        .setting-group input[type="range"]::-moz-range-thumb {
+            width: 8px;
+            height: 16px;
+            background: var(--bg);
+            border: 1px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            border-radius: 0;
+            cursor: pointer;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .setting-row label {
+            margin-bottom: 0;
+        }
+
+        .setting-value {
+            color: var(--text-3);
+            font-size: 13px;
+            min-width: 36px;
+            text-align: right;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js"></script>
+</head>
+<body>
+<div id="loading-overlay">
+    <div class="cs-progress-bar">
+        <div id="progress-bar" style="width: 0%" class="bars"></div>
+    </div>
+    <div id="loading-status">Initializing...</div>
+</div>
+
+<div id="main-menu">
+    <img class="menu-logo" src="custom_assets/cs16.png" alt="CS 1.6">
+
+    <div class="menu-buttons" id="menu-main">
+        <button class="menu-btn" onclick="showMapSelect()">Play</button>
+        <button class="menu-btn" onclick="openOptions()">Options</button>
+        <button class="menu-btn danger" onclick="quitGame()">Quit</button>
+    </div>
+
+    <div id="map-select" class="cs-window">
+        <div class="heading">
+            <span class="title">New Game</span>
+            <button class="close-btn" onclick="showMainMenu()">✕</button>
+        </div>
+        <div class="content">
+            <div class="setting-group">
+                <label class="cs-select__label" for="map-select-dropdown">Map</label>
+                <select class="cs-select" id="map-select-dropdown"></select>
+            </div>
+            <div class="setting-group">
+                <label class="cs-select__label" for="bot-difficulty">Bot Difficulty</label>
+                <select class="cs-select" id="bot-difficulty">
+                    <option value="0">Easy</option>
+                    <option value="1" selected>Normal</option>
+                    <option value="2">Hard</option>
+                    <option value="3">Expert</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <div class="setting-row">
+                    <label for="bot-count">Number of Players</label>
+                    <span class="setting-value" id="bot-count-val">10</span>
+                </div>
+                <input type="range" id="bot-count" min="2" max="20" step="1" value="10">
+            </div>
+            <div class="footer-btns">
+                <button class="cs-btn" onclick="startSelectedMap()">OK</button>
+                <button class="cs-btn" onclick="showMainMenu()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-panel" class="cs-window">
+        <div class="heading">
+            <span class="title">Settings</span>
+            <button class="close-btn" onclick="showMainMenu()">✕</button>
+        </div>
+        <div class="content">
+            <div class="setting-group">
+                <div class="setting-row">
+                    <label for="sensitivity">Mouse Sensitivity</label>
+                    <span class="setting-value" id="sens-val">2.5</span>
+                </div>
+                <input type="range" id="sensitivity" min="0.5" max="10" step="0.1" value="2.5">
+            </div>
+
+            <div class="setting-group">
+                <label class="cs-select__label" for="crosshair">Crosshair Style</label>
+                <select class="cs-select" id="crosshair">
+                    <option value="0">Default</option>
+                    <option value="1" selected>Classic</option>
+                    <option value="2">Dynamic</option>
+                    <option value="3">Static</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label class="cs-select__label" for="crosshairsize">Crosshair Size</label>
+                <select class="cs-select" id="crosshairsize">
+                    <option value="small">Small</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="large">Large</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label class="cs-select__label" for="hud_color">HUD Color</label>
+                <select class="cs-select" id="hud_color">
+                    <option value="0">Orange (Default)</option>
+                    <option value="1">White</option>
+                    <option value="2">Light Blue</option>
+                    <option value="3">Green</option>
+                    <option value="4">Red</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-row">
+                    <label for="maxfps">Max FPS</label>
+                    <span class="setting-value" id="fps-val">100</span>
+                </div>
+                <input type="range" id="maxfps" min="30" max="300" step="10" value="100">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-row">
+                    <label for="gamma">Brightness (Gamma)</label>
+                    <span class="setting-value" id="gamma-val">2.5</span>
+                </div>
+                <input type="range" id="gamma" min="1" max="5" step="0.1" value="2.5">
+            </div>
+
+            <div class="setting-group">
+                <label class="cs-select__label" for="cl_openscheme">Open GL Brightness</label>
+                <select class="cs-select" id="cl_openscheme">
+                    <option value="0">Low</option>
+                    <option value="1" selected>Medium</option>
+                    <option value="2">High</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script type="module">
+    import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
+
+    let emModule = null;
+
+    function execCmd(cmd) {
+        if (!emModule) return;
+        emModule.ccall('Cmd_ExecuteString', null, ['string'], [cmd]);
+    }
+
+    function addBots(count) {
+        for (let i = 0; i < count; i++) {
+            setTimeout(() => execCmd('bot_add'), i * 500);
+        }
+    }
+
+    let mapList = [];
+
+    function populateMapSelect() {
+        const select = document.getElementById('map-select-dropdown');
+        select.innerHTML = '';
+        mapList.forEach(map => {
+            const option = document.createElement('option');
+            option.value = map;
+            option.textContent = map;
+            select.appendChild(option);
+        });
+    }
+
+    function makeDraggable(winEl) {
+        const heading = winEl.querySelector('.heading');
+        let isDragging = false;
+        let startX, startY, origLeft, origTop;
+
+        heading.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.close-btn')) return;
+            isDragging = true;
+
+            const rect = winEl.getBoundingClientRect();
+            const cs = getComputedStyle(winEl);
+            const tx = cs.transform;
+            if (tx && tx !== 'none') {
+                winEl.style.left = rect.left + 'px';
+                winEl.style.top = rect.top + 'px';
+                winEl.style.transform = 'none';
+            } else {
+                winEl.style.left = (parseFloat(cs.left) || rect.left) + 'px';
+                winEl.style.top = (parseFloat(cs.top) || rect.top) + 'px';
+            }
+
+            startX = e.clientX;
+            startY = e.clientY;
+            origLeft = parseFloat(winEl.style.left);
+            origTop = parseFloat(winEl.style.top);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            winEl.style.left = (origLeft + dx) + 'px';
+            winEl.style.top = (origTop + dy) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+    }
+
+    document.querySelectorAll('.cs-window').forEach(makeDraggable);
+
+    window.startSelectedMap = function() {
+        const mapSelect = document.getElementById('map-select-dropdown');
+        if (!mapSelect.value) return;
+        const difficulty = document.getElementById('bot-difficulty').value;
+        const botCount = parseInt(document.getElementById('bot-count').value) - 1;
+        startBotGame(mapSelect.value, difficulty, botCount);
+    };
+
+    window.showMapSelect = function() {
+        populateMapSelect();
+        document.getElementById('settings-panel').style.display = 'none';
+        document.getElementById('map-select').style.display = 'block';
+    };
+
+    window.showMainMenu = function() {
+        document.getElementById('map-select').style.display = 'none';
+        document.getElementById('settings-panel').style.display = 'none';
+    };
+
+    window.showMainMenuFromSettings = function() {
+        document.getElementById('settings-panel').style.display = 'none';
+    };
+
+    window.openOptions = function() {
+        document.getElementById('map-select').style.display = 'none';
+        document.getElementById('settings-panel').style.display = 'block';
+    };
+
+    window.startBotGame = function(map, difficulty, botCount) {
+        if (!emModule) return;
+        document.getElementById('main-menu').style.display = 'none';
+        execCmd('bot_difficulty ' + difficulty);
+        execCmd('sv_cheats 0');
+        execCmd('maxplayers 20');
+        execCmd('map ' + map);
+        setTimeout(() => {
+            execCmd('bot_kill');
+            execCmd('bot_kick');
+            execCmd('bot_quota_mode fill');
+            execCmd('bot_quota ' + botCount);
+        }, 3000);
+    };
+
+    document.getElementById('bot-count').addEventListener('input', function() {
+        document.getElementById('bot-count-val').textContent = this.value;
+    });
+
+    document.getElementById('sensitivity').addEventListener('input', function() {
+        document.getElementById('sens-val').textContent = this.value;
+        execCmd('sensitivity ' + this.value);
+    });
+
+    document.getElementById('crosshair').addEventListener('change', function() {
+        execCmd('crosshair ' + this.value);
+    });
+
+    document.getElementById('crosshairsize').addEventListener('change', function() {
+        execCmd('cl_crosshairsize ' + this.value);
+    });
+
+    document.getElementById('hud_color').addEventListener('change', function() {
+        execCmd('hud_color ' + this.value);
+    });
+
+    document.getElementById('maxfps').addEventListener('input', function() {
+        document.getElementById('fps-val').textContent = this.value;
+        execCmd('fps_max ' + this.value);
+    });
+
+    document.getElementById('gamma').addEventListener('input', function() {
+        document.getElementById('gamma-val').textContent = this.value;
+        execCmd('gamma ' + this.value);
+    });
+
+    document.getElementById('cl_openscheme').addEventListener('change', function() {
+        execCmd(' brightness ' + this.value);
+    });
+
+    window.quitGame = function() {
+        if (!emModule) return;
+        execCmd('quit');
+    };
+
+
+
+    function setProgress(pct, status) {
+        const bar = document.getElementById('progress-bar');
+        if (bar) bar.style.width = pct + '%';
+        const statusEl = document.getElementById('loading-status');
+        if (statusEl) statusEl.textContent = status;
+    }
+
+    async function main() {
+        setProgress(5, 'Downloading game files...');
+
+        const files = {};
+        const res = await fetch('./valve.zip');
+        const zip = await JSZip.loadAsync(await res.arrayBuffer());
+
+        setProgress(20, 'Extracting assets...');
+
+        const mapKeys = Object.keys(zip.files).filter(p =>
+            p.startsWith('cstrike/maps/') && p.endsWith('.bsp') && !zip.files[p].dir
+        );
+        mapList = mapKeys.map(p => {
+            const parts = p.split('/');
+            return parts[parts.length - 1].replace('.bsp', '');
+        }).sort();
+
+        const fileKeys = Object.keys(zip.files).filter(p => !zip.files[p].dir);
+        let extracted = 0;
+
+        await Promise.all(fileKeys.map(async p => {
+            const file = zip.files[p];
+            const path = `/rodir/${p}`;
+            files[path] = await file.async("uint8array");
+            extracted++;
+            if (extracted % 500 === 0 || extracted === fileKeys.length) {
+                setProgress(20 + Math.floor((extracted / fileKeys.length) * 30),
+                    `Extracting files... (${extracted}/${fileKeys.length})`);
+            }
+        }));
+
+        setProgress(55, 'Downloading extras...');
+        const extras = await (await fetch(
+            'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/extras.pk3'
+        )).arrayBuffer();
+
+        setProgress(70, 'Initializing engine...');
+
+        Xash3D({
+            arguments: ['-windowed', '-game', 'cstrike', '+_vgui_menus', '0', '-ref', 'webgl2'],
+            canvas: document.getElementById('canvas'),
+            dynamicLibraries: [
+                "filesystem_stdio.wasm",
+                "libref_webgl2.wasm",
+                "cl_dlls/menu_emscripten_wasm32.wasm",
+                "dlls/cs_emscripten_wasm32.wasm",
+                "cl_dlls/client_emscripten_wasm32.wasm",
+                "/rodir/filesystem_stdio.wasm",
+            ],
+            onRuntimeInitialized: function () {
+                setProgress(85, 'Loading game data...');
+
+                emModule = this;
+
+                Object.keys(files).forEach(k => {
+                    const dir = k.split('/').slice(0, -1).join('/');
+                    this.FS.mkdirTree(dir);
+                    this.FS.writeFile(k, files[k]);
+                });
+                this.FS.writeFile('/rodir/cstrike/extras.pk3', new Uint8Array(extras));
+                this.FS.mkdir('/rwdir');
+                this.FS.chdir('/rodir');
+
+                setProgress(100, 'Ready!');
+
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('main-menu').style.display = 'flex';
+                }, 500);
+            },
+            locateFile: (p) => {
+                switch (p) {
+                    case 'xash.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/xash.wasm'
+                    case '/rodir/filesystem_stdio.wasm':
+                    case 'filesystem_stdio.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/filesystem_stdio.wasm'
+                    case 'libref_webgl2.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/libref_webgl2.wasm'
+                    case 'cl_dlls/menu_emscripten_wasm32.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/cl_dlls/menu_emscripten_wasm32.wasm'
+                    case 'dlls/cs_emscripten_wasm32.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/dlls/cs_emscripten_wasm32.wasm'
+                    case 'cl_dlls/client_emscripten_wasm32.wasm':
+                        return 'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/cl_dlls/client_emscripten_wasm32.wasm'
+                    default:
+                        return p
+                }
+            },
+            print: (text) => { console.log('[Xash3D]', text); },
+            printErr: (text) => { console.error('[Xash3D]', text); },
+        });
+
+        setTimeout(() => {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+                setProgress(100, 'Ready!');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    document.getElementById('main-menu').style.display = 'flex';
+                }, 500);
+            }
+        }, 30000);
+    }
+
+    main();
+</script>
+</body>
+</html>
