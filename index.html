@@ -53,6 +53,13 @@
             margin-top: 10px;
         }
 
+        #loading-hint {
+            font-size: 12px;
+            color: var(--text-3);
+            opacity: 0.7;
+            margin-top: 6px;
+        }
+
         #main-menu {
             position: fixed;
             top: 0; left: 0;
@@ -267,6 +274,49 @@
             min-width: 36px;
             text-align: right;
         }
+
+        .mc-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .mc-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .mc-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--slider-bg, #444);
+            border: 1px solid;
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+            transition: background 0.15s ease;
+        }
+
+        .mc-slider::before {
+            position: absolute;
+            content: '';
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background: #fff;
+            transition: transform 0.15s ease;
+        }
+
+        .mc-switch input:checked + .mc-slider {
+            background: var(--accent, #c9a227);
+        }
+
+        .mc-switch input:checked + .mc-slider::before {
+            transform: translateX(20px);
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js"></script>
 </head>
@@ -276,6 +326,7 @@
         <div id="progress-bar" style="width: 0%" class="bars"></div>
     </div>
     <div id="loading-status">Initializing...</div>
+    <div id="loading-hint">First time load may take a while, but any after will load quickly!</div>
 </div>
 
 <div id="main-menu">
@@ -314,7 +365,8 @@
                 <input type="range" id="bot-count" min="2" max="20" step="1" value="10">
             </div>
             <div class="footer-btns">
-                <button class="cs-btn" onclick="startSelectedMap()">OK</button>
+                <span class="setting-value" id="map-load-status"></span>
+                <button class="cs-btn" id="start-map-btn" onclick="startSelectedMap()">OK</button>
                 <button class="cs-btn" onclick="showMainMenu()">Cancel</button>
             </div>
         </div>
@@ -326,6 +378,16 @@
             <button class="close-btn" onclick="showMainMenu()">✕</button>
         </div>
         <div class="content">
+            <div class="setting-group">
+                <div class="setting-row">
+                    <label for="mobile-controls-toggle">Mobile Touch Controls</label>
+                    <label class="mc-switch">
+                        <input type="checkbox" id="mobile-controls-toggle">
+                        <span class="mc-slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <div class="setting-group">
                 <div class="setting-row">
                     <label for="sensitivity">Mouse Sensitivity</label>
@@ -411,7 +473,42 @@
         }
     }
 
+    const MOBILE_CONTROLS_KEY = 'csweb_mobile_controls';
+    let mobileControlsEnabled = localStorage.getItem(MOBILE_CONTROLS_KEY) === '1';
+
+    function applyMobileControls() {
+        if (mobileControlsEnabled) {
+            execCmd('touch_enable 1');
+            execCmd('touch_loaddefaults');
+            execCmd('touch_show');
+        } else {
+            execCmd('touch_hide');
+            execCmd('touch_enable 0');
+        }
+    }
+
+    document.getElementById('mobile-controls-toggle').checked = mobileControlsEnabled;
+    document.getElementById('mobile-controls-toggle').addEventListener('change', function() {
+        mobileControlsEnabled = this.checked;
+        localStorage.setItem(MOBILE_CONTROLS_KEY, mobileControlsEnabled ? '1' : '0');
+    });
+
     let mapList = [];
+    let gameZip = null;
+    let mapPathByName = {};
+    const writtenMapBsps = new Set();
+
+    async function ensureMapExtracted(mapName) {
+        if (writtenMapBsps.has(mapName) || !gameZip) return;
+        const path = mapPathByName[mapName];
+        if (!path) return;
+        const data = await gameZip.files[path].async('uint8array');
+        const fsPath = `/rodir/${path}`;
+        const dir = fsPath.split('/').slice(0, -1).join('/');
+        emModule.FS.mkdirTree(dir);
+        emModule.FS.writeFile(fsPath, data);
+        writtenMapBsps.add(mapName);
+    }
 
     function populateMapSelect() {
         const select = document.getElementById('map-select-dropdown');
@@ -466,11 +563,27 @@
 
     document.querySelectorAll('.cs-window').forEach(makeDraggable);
 
-    window.startSelectedMap = function() {
+    let mapLoadInProgress = false;
+
+    window.startSelectedMap = async function() {
+        if (mapLoadInProgress) return;
         const mapSelect = document.getElementById('map-select-dropdown');
         if (!mapSelect.value) return;
         const difficulty = document.getElementById('bot-difficulty').value;
         const botCount = parseInt(document.getElementById('bot-count').value) - 1;
+
+        const startBtn = document.getElementById('start-map-btn');
+        const status = document.getElementById('map-load-status');
+        mapLoadInProgress = true;
+        startBtn.disabled = true;
+        status.textContent = 'Loading map...';
+        try {
+            await ensureMapExtracted(mapSelect.value);
+        } finally {
+            status.textContent = '';
+            startBtn.disabled = false;
+            mapLoadInProgress = false;
+        }
         startBotGame(mapSelect.value, difficulty, botCount);
     };
 
@@ -497,6 +610,7 @@
     window.startBotGame = function(map, difficulty, botCount) {
         if (!emModule) return;
         document.getElementById('main-menu').style.display = 'none';
+        applyMobileControls();
         execCmd('bot_difficulty ' + difficulty);
         execCmd('sv_cheats 0');
         execCmd('maxplayers 20');
@@ -558,24 +672,48 @@
         if (statusEl) statusEl.textContent = status;
     }
 
+    const ASSET_CACHE_NAME = 'csweb-assets-v1';
+
+    async function cachedFetch(url) {
+        if (typeof caches === 'undefined') return fetch(url);
+        try {
+            const cache = await caches.open(ASSET_CACHE_NAME);
+            const cached = await cache.match(url);
+            if (cached) return cached;
+            const response = await fetch(url);
+            if (response.ok) {
+                cache.put(url, response.clone()).catch(() => {});
+            }
+            return response;
+        } catch (e) {
+            return fetch(url);
+        }
+    }
+
     async function main() {
         setProgress(5, 'Downloading game files...');
 
         const files = {};
-        const res = await fetch('https://media.githubusercontent.com/media/athyx-network/csweb/main/valve.zip');
+        const res = await cachedFetch('https://media.githubusercontent.com/media/athyx-network/csweb/main/valve.zip');
         const zip = await JSZip.loadAsync(await res.arrayBuffer());
+        gameZip = zip;
 
         setProgress(20, 'Extracting assets...');
 
         const mapKeys = Object.keys(zip.files).filter(p =>
             p.startsWith('cstrike/maps/') && p.endsWith('.bsp') && !zip.files[p].dir
         );
-        mapList = mapKeys.map(p => {
+        const mapKeySet = new Set(mapKeys);
+        mapPathByName = {};
+        mapKeys.forEach(p => {
             const parts = p.split('/');
-            return parts[parts.length - 1].replace('.bsp', '');
-        }).sort();
+            mapPathByName[parts[parts.length - 1].replace('.bsp', '')] = p;
+        });
+        mapList = Object.keys(mapPathByName).sort();
 
-        const fileKeys = Object.keys(zip.files).filter(p => !zip.files[p].dir);
+        // Map .bsp files are extracted lazily on demand (see ensureMapExtracted) since
+        // only the chosen map is ever needed, and there can be dozens of them.
+        const fileKeys = Object.keys(zip.files).filter(p => !zip.files[p].dir && !mapKeySet.has(p));
         let extracted = 0;
 
         await Promise.all(fileKeys.map(async p => {
@@ -590,7 +728,7 @@
         }));
 
         setProgress(55, 'Downloading extras...');
-        const extras = await (await fetch(
+        const extras = await (await cachedFetch(
             'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/extras.pk3'
         )).arrayBuffer();
 
