@@ -563,6 +563,24 @@
 
     document.querySelectorAll('.cs-window').forEach(makeDraggable);
 
+    const buttonRolloverSound = new Audio('custom_assets/buttonrollover.wav');
+    const buttonClickSound = new Audio('custom_assets/buttonclick.wav');
+
+    function playButtonRollover() {
+        buttonRolloverSound.currentTime = 0;
+        buttonRolloverSound.play().catch(() => {});
+    }
+
+    function playButtonClick() {
+        buttonClickSound.currentTime = 0;
+        buttonClickSound.play().catch(() => {});
+    }
+
+    document.querySelectorAll('#menu-main .menu-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', playButtonRollover);
+        btn.addEventListener('click', playButtonClick);
+    });
+
     let mapLoadInProgress = false;
 
     window.startSelectedMap = async function() {
