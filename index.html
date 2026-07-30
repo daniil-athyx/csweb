@@ -416,13 +416,14 @@
             </div>
 
             <div class="setting-group">
-                <label class="cs-select__label" for="hud_color">HUD Color</label>
-                <select class="cs-select" id="hud_color">
-                    <option value="0">Orange (Default)</option>
-                    <option value="1">White</option>
-                    <option value="2">Light Blue</option>
-                    <option value="3">Green</option>
-                    <option value="4">Red</option>
+                <label class="cs-select__label" for="crosshaircolor">Crosshair Color</label>
+                <select class="cs-select" id="crosshaircolor">
+                    <option value="50 250 50" selected>Green (Default)</option>
+                    <option value="255 0 0">Red</option>
+                    <option value="0 255 255">Cyan</option>
+                    <option value="255 255 0">Yellow</option>
+                    <option value="255 128 0">Orange</option>
+                    <option value="255 255 255">White</option>
                 </select>
             </div>
 
@@ -434,22 +435,6 @@
                 <input type="range" id="maxfps" min="30" max="300" step="10" value="100">
             </div>
 
-            <div class="setting-group">
-                <div class="setting-row">
-                    <label for="gamma">Brightness (Gamma)</label>
-                    <span class="setting-value" id="gamma-val">2.5</span>
-                </div>
-                <input type="range" id="gamma" min="1" max="5" step="0.1" value="2.5">
-            </div>
-
-            <div class="setting-group">
-                <label class="cs-select__label" for="cl_openscheme">Open GL Brightness</label>
-                <select class="cs-select" id="cl_openscheme">
-                    <option value="0">Low</option>
-                    <option value="1" selected>Medium</option>
-                    <option value="2">High</option>
-                </select>
-            </div>
         </div>
     </div>
 
@@ -650,30 +635,31 @@
         execCmd('sensitivity ' + this.value);
     });
 
+    const CROSSHAIR_STYLES = {
+        '0': { dynamic: 1, translucent: 1 }, // Default
+        '1': { dynamic: 0, translucent: 0 }, // Classic
+        '2': { dynamic: 1, translucent: 0 }, // Dynamic
+        '3': { dynamic: 0, translucent: 1 }, // Static
+    };
+
     document.getElementById('crosshair').addEventListener('change', function() {
-        execCmd('crosshair ' + this.value);
+        const style = CROSSHAIR_STYLES[this.value];
+        if (!style) return;
+        execCmd('cl_dynamiccrosshair ' + style.dynamic);
+        execCmd('cl_crosshair_translucent ' + style.translucent);
     });
 
     document.getElementById('crosshairsize').addEventListener('change', function() {
-        execCmd('cl_crosshairsize ' + this.value);
+        execCmd('cl_crosshair_size ' + this.value);
     });
 
-    document.getElementById('hud_color').addEventListener('change', function() {
-        execCmd('hud_color ' + this.value);
+    document.getElementById('crosshaircolor').addEventListener('change', function() {
+        execCmd('cl_crosshair_color "' + this.value + '"');
     });
 
     document.getElementById('maxfps').addEventListener('input', function() {
         document.getElementById('fps-val').textContent = this.value;
         execCmd('fps_max ' + this.value);
-    });
-
-    document.getElementById('gamma').addEventListener('input', function() {
-        document.getElementById('gamma-val').textContent = this.value;
-        execCmd('gamma ' + this.value);
-    });
-
-    document.getElementById('cl_openscheme').addEventListener('change', function() {
-        execCmd(' brightness ' + this.value);
     });
 
     window.quitGame = function() {
