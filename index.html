@@ -319,6 +319,13 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js"></script>
+    <script>
+      window.fileMergerConfig = {
+        files: [ { name: 'valve.zip', parts: 17 } ],
+        basePath: ""
+      };
+    </script>
+    <script src="fileMerger.js"></script>
 </head>
 <body>
 <div id="loading-overlay">
@@ -698,7 +705,7 @@
         setProgress(5, 'Downloading game files...');
 
         const files = {};
-        const res = await cachedFetch('https://media.githubusercontent.com/media/athyx-network/csweb/main/valve.zip');
+        const res = await cachedFetch('https://cdn.jsdelivr.net/gh/daniil-athyx/csweb@main/valve.zip');
         const zip = await JSZip.loadAsync(await res.arrayBuffer());
         gameZip = zip;
 
