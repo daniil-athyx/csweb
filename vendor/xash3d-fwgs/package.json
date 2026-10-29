@@ -1,0 +1,67 @@
+{
+  "name": "xash3d-fwgs",
+  "version": "1.2.2+commit.7c58854",
+  "description": "Xash3D-FWGS emscripten port",
+  "homepage": "https://github.com/yohimik/webxash3d-fwgs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build:wasm": "docker build --progress=plain -t xash3d-builder . && docker run --name xash3d-temp xash3d-builder && docker cp xash3d-temp:/out ./dist && docker rm xash3d-temp",
+    "build:ts": "node --loader ts-node/esm scripts/patch-emscripten-js.mts && tsc -p tsconfig.build.json",
+    "build": "npm run clean && npm run build:wasm && npm run build:ts",
+    "clean": "rm -rf ./dist && rm -rf ./lib/generated/xash.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./raw.js": "./dist/raw.js",
+    "./filesystem_stdio.wasm": "./dist/filesystem_stdio.wasm",
+    "./libref_webgl2.wasm": "./dist/libref_webgl2.wasm",
+    "./libmenu.wasm": "./dist/libmenu.wasm",
+    "./libref_gles3compat.wasm": "./dist/libref_webgl2.wasm",
+    "./libref_soft.wasm": "./dist/libref_soft.wasm",
+    "./xash.wasm": "./dist/xash.wasm",
+    "./cl_dll/menu_emscripten_wasm32.wasm": "./dist/libmenu.wasm",
+    "./extras.pk3": "./dist/valve/extras.pk3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yohimik/webxash3d-fwgs.git"
+  },
+  "keywords": [
+    "xash3d",
+    "xash3d-fwgs",
+    "goldsrc",
+    "half-life",
+    "counter-strike",
+    "engine",
+    "game-engine",
+    "wasm",
+    "emscripten",
+    "webassembly",
+    "typescript",
+    "port",
+    "engine-port",
+    "browser-game",
+    "modding",
+    "fps-engine",
+    "retro-gaming",
+    "open-source-game-engine"
+  ],
+  "author": "yohimik",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

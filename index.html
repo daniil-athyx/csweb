@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Counter-Strike</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ekmas/cs16.css@main/css/cs16.min.css">
+    <link rel="stylesheet" href="vendor/cs16.css/css/cs16.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -318,11 +318,12 @@
             transform: translateX(20px);
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js"></script>
+    <script src="vendor/jszip/dist/jszip.min.js"></script>
+    <script src="vendor/xash3d-fwgs/dist/raw.js"></script>
     <script>
       window.fileMergerConfig = {
         files: [ { name: 'valve.zip', parts: 17 } ],
-        basePath: ""
+        basePath: new URL('./', window.location.href).href
       };
     </script>
     <script src="fileMerger.js"></script>
@@ -450,8 +451,6 @@
 <canvas id="canvas"></canvas>
 
 <script type="module">
-    import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
-
     let emModule = null;
 
     function execCmd(cmd) {
@@ -705,8 +704,8 @@
         setProgress(5, 'Downloading game files...');
 
         const files = {};
-        const res = await cachedFetch('https://cdn.jsdelivr.net/gh/daniil-athyx/csweb@main/valve.zip');
-        const zip = await JSZip.loadAsync(await res.arrayBuffer());
+        const res = await cachedFetch(new URL('valve.zip', window.location.href).href);
+        const zip = await window.JSZip.loadAsync(await res.arrayBuffer());
         gameZip = zip;
 
         setProgress(20, 'Extracting assets...');
@@ -780,12 +779,12 @@
             locateFile: (p) => {
                 switch (p) {
                     case 'xash.wasm':
-                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/xash.wasm'
+                        return 'vendor/xash3d-fwgs/dist/xash.wasm'
                     case '/rodir/filesystem_stdio.wasm':
                     case 'filesystem_stdio.wasm':
-                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/filesystem_stdio.wasm'
+                        return 'vendor/xash3d-fwgs/dist/filesystem_stdio.wasm'
                     case 'libref_webgl2.wasm':
-                        return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/libref_webgl2.wasm'
+                        return 'vendor/xash3d-fwgs/dist/libref_webgl2.wasm'
                     case 'cl_dlls/menu_emscripten_wasm32.wasm':
                         return 'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cstrike/cl_dlls/menu_emscripten_wasm32.wasm'
                     case 'dlls/cs_emscripten_wasm32.wasm':
